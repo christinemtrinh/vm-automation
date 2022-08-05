@@ -1,0 +1,429 @@
+{
+  "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location": {
+      "type": "String"
+    },
+    "adminUsername": {
+      "type": "String"
+    },
+    "adminPassword": {
+      "type": "SecureString"
+    },
+    "utcValue": {
+      "defaultValue": "[utcNow()]",
+      "type": "String"
+    }
+  },
+  "variables": {
+    "resourceNamePrefix": "[uniqueString(parameters('utcValue'), resourceGroup().id)]",
+    "networkInterfaceName": "[concat(variables('resourceNamePrefix'), 'networkInterface')]",
+    "networkSecurityGroupName": "[concat(variables('resourceNamePrefix'), 'nsg')]",
+    "subnetName": "subnet-dbmigration",
+    "comment0": "This existing subnet currently supports 251 simultaneous IPs (can be configured).",
+    "virtualNetworkId": "/subscriptions/ff356d7e-a5f6-4293-af53-b3b85f1c54fa/resourceGroups/Innovation-ICD-Apps-RG/providers/Microsoft.Network/virtualNetworks/vnet-dbmigration",
+    "networkSecurityGroupRules": [
+      {
+        "name": "Deny_RDPs",
+        "type": "Microsoft.Network/networkSecurityGroups/securityRules",
+        "properties": {
+          "description": "Denies all RDP connections",
+          "protocol": "TCP",
+          "sourcePortRange": "*",
+          "destinationPortRange": "3389",
+          "sourceAddressPrefix": "*",
+          "destinationAddressPrefix": "*",
+          "access": "Deny",
+          "priority": 101,
+          "direction": "Inbound",
+          "sourcePortRanges": [],
+          "destinationPortRanges": [],
+          "sourceAddressPrefixes": [],
+          "destinationAddressPrefixes": []
+        }
+      },
+      {
+        "name": "AllowSelectIPforRDP",
+        "type": "Microsoft.Network/networkSecurityGroups/securityRules",
+        "properties": {
+          "description": "Allows RDP when IP matches that provided by finThrive VPN",
+          "protocol": "TCP",
+          "sourcePortRange": "*",
+          "destinationPortRange": "3389",
+          "SourceAddressPrefixes": [
+            "204.11.6.125",
+            "40.84.136.75"
+          ],
+          "destinationAddressPrefix": "*",
+          "access": "Allow",
+          "priority": 100,
+          "direction": "Inbound",
+          "sourcePortRanges": [],
+          "destinationPortRanges": [],
+          "sourceAddressPrefixes": [],
+          "destinationAddressPrefixes": []
+        }
+      },
+      {
+        "name": "Allow_Port_1433",
+        "type": "Microsoft.Network/networkSecurityGroups/securityRules",
+        "properties": {
+          "provisioningState": "Succeeded",
+          "description": "Allows connection via local SSMS",
+          "protocol": "TCP",
+          "sourcePortRange": "*",
+          "destinationPortRange": "1433",
+          "sourceAddressPrefix": "*",
+          "destinationAddressPrefix": "*",
+          "access": "Allow",
+          "priority": 102,
+          "direction": "Inbound",
+          "sourcePortRanges": [],
+          "destinationPortRanges": [],
+          "sourceAddressPrefixes": [],
+          "destinationAddressPrefixes": []
+        }
+      }
+    ],
+    "comment1": "These security rules limit connection to the VM to certain IP addresses. I think right now it is only to mine. Hoping to configure to allow all on the VPN.",
+    "publicIpAddressName": "[concat(variables('resourceNamePrefix'), 'IP')]",
+    "publicIpAddressType": "Static",
+    "publicIpAddressSku": "Basic",
+    "pipDeleteOption": "Delete",
+    "virtualMachineName": "[concat(variables('resourceNamePrefix'),'VM')]",
+    "virtualMachineComputerName": "[concat(variables('resourceNamePrefix'), 'VM')]",
+    "virtualMachineRG": "Innovation-ICD-Apps-RG",
+    "comment2": "All virtual machines will be provisioned in original development RG. Will need to test different configurations depending on requirements.",
+    "osDiskName": "[concat(variables('resourceNamePrefix'), 'OSdisk')]",
+    "osDiskType": "Premium_LRS",
+    "osDiskDeleteOption": "Delete",
+    "dataDisks": [
+      {
+        "lun": 0,
+        "createOption": "attach",
+        "deleteOption": "Detach",
+        "caching": "ReadOnly",
+        "writeAcceleratorEnabled": false,
+        "id": null,
+        "name": "[concat(variables('resourceNamePrefix'), '_DataDisk_0')]",
+        "storageAccountType": null,
+        "diskSizeGB": null,
+        "diskEncryptionSet": null
+      },
+      {
+        "lun": 1,
+        "createOption": "attach",
+        "deleteOption": "Detach",
+        "caching": "None",
+        "writeAcceleratorEnabled": false,
+        "id": null,
+        "name": "[concat(variables('resourceNamePrefix'), '_DataDisk_1')]",
+        "storageAccountType": null,
+        "diskSizeGB": null,
+        "diskEncryptionSet": null
+      }
+    ],
+    "dataDiskResources": [
+      {
+        "name": "[concat(variables('resourceNamePrefix'), '_DataDisk_0')]",
+        "sku": "Premium_LRS",
+        "properties": {
+          "diskSizeGB": 1024,
+          "creationData": {
+            "createOption": "empty"
+          }
+        }
+      },
+      {
+        "name": "[concat(variables('resourceNamePrefix'), '_DataDisk_1')]",
+        "sku": "Premium_LRS",
+        "properties": {
+          "diskSizeGB": 1024,
+          "creationData": {
+            "createOption": "empty"
+          }
+        }
+      }
+    ],
+    "virtualMachineSize": "Standard_B2s",
+    "nicDeleteOption": "Delete",
+    "patchMode": "AutomaticByOS",
+    "enableHotpatching": false,
+    "sqlVirtualMachineLocation": "[concat(parameters('location'), '')]",
+    "sqlVirtualMachineName": "[concat(variables('resourceNamePrefix'),'VM')]",
+    "sqlConnectivityType": "Private",
+    "sqlPortNumber": 1433,
+    "sqlStorageDisksCount": 1,
+    "sqlStorageWorkloadType": "OLTP",
+    "sqlStorageDisksConfigurationType": "NEW",
+    "sqlStorageStartingDeviceId": 2,
+    "sqlStorageDeploymentToken": 30192,
+    "sqlAutopatchingDayOfWeek": "Sunday",
+    "sqlAutopatchingStartHour": "2",
+    "sqlAutopatchingWindowDuration": "60",
+    "dataPath": "F:\\data",
+    "dataDisksLUNs": [
+      0
+    ],
+    "logPath": "G:\\log",
+    "logDisksLUNs": [
+      1
+    ],
+    "tempDbPath": "D:\\tempDb",
+    "dataFileCount": 2,
+    "dataFileSize": 8,
+    "dataGrowth": 64,
+    "logFileSize": 8,
+    "logGrowth": 64,
+    "SQLSystemDbOnDataDisk": false,
+    "rServicesEnabled": "false",
+    "maxdop": 0,
+    "isOptimizeForAdHocWorkloadsEnabled": false,
+    "collation": "SQL_Latin1_General_CP1_CI_AS",
+    "minServerMemoryMB": 0,
+    "maxServerMemoryMB": 2147483647,
+    "isLPIMEnabled": false,
+    "isIFIEnabled": false,
+    "nsgId": "[resourceId(resourceGroup().name, 'Microsoft.Network/networkSecurityGroups', variables('networkSecurityGroupName'))]",
+    "vnetId": "[variables('virtualNetworkId')]",
+    "vnetName": "[last(split(variables('vnetId'), '/'))]",
+    "subnetRef": "[concat(variables('vnetId'), '/subnets/', variables('subnetName'))]",
+    "managedIDname": "VMtoDB"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Network/networkInterfaces",
+      "apiVersion": "2021-03-01",
+      "name": "[variables('networkInterfaceName')]",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[concat('Microsoft.Network/networkSecurityGroups/', variables('networkSecurityGroupName'))]",
+        "[concat('Microsoft.Network/publicIpAddresses/', variables('publicIpAddressName'))]"
+      ],
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "subnet": {
+                "id": "[variables('subnetRef')]"
+              },
+              "privateIPAllocationMethod": "Dynamic",
+              "publicIpAddress": {
+                "id": "[resourceId(resourceGroup().name, 'Microsoft.Network/publicIpAddresses', variables('publicIpAddressName'))]",
+                "properties": {
+                  "deleteOption": "[variables('pipDeleteOption')]"
+                }
+              }
+            }
+          }
+        ],
+        "networkSecurityGroup": {
+          "id": "[variables('nsgId')]"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Network/networkSecurityGroups",
+      "apiVersion": "2019-02-01",
+      "name": "[variables('networkSecurityGroupName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "securityRules": "[variables('networkSecurityGroupRules')]"
+      }
+    },
+    {
+      "type": "Microsoft.Network/publicIpAddresses",
+      "apiVersion": "2020-08-01",
+      "name": "[variables('publicIpAddressName')]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "[variables('publicIpAddressSku')]"
+      },
+      "properties": {
+        "publicIpAllocationMethod": "[variables('publicIpAddressType')]"
+      }
+    },
+    {
+      "type": "Microsoft.Compute/disks",
+      "apiVersion": "2020-12-01",
+      "name": "[variables('dataDiskResources')[copyIndex()].name]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "[variables('dataDiskResources')[copyIndex()].sku]"
+      },
+      "properties": "[variables('dataDiskResources')[copyIndex()].properties]",
+      "copy": {
+        "name": "managedDiskResources",
+        "count": "[length(variables('dataDiskResources'))]"
+      }
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines",
+      "apiVersion": "2021-07-01",
+      "name": "[variables('virtualMachineName')]",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "managedDiskResources",
+        "[concat('Microsoft.Network/networkInterfaces/', variables('networkInterfaceName'))]"
+      ],
+      "identity": {
+        "type": "userAssigned",
+        "userAssignedIdentities": {
+          "[resourceID('Microsoft.ManagedIdentity/userAssignedIdentities/', variables('managedIDname'))]": {}
+        }
+      },
+      "properties": {
+        "hardwareProfile": {
+          "vmSize": "[variables('virtualMachineSize')]"
+        },
+        "storageProfile": {
+          "osDisk": {
+            "name": "[variables('osDiskName')]",
+            "createOption": "fromImage",
+            "managedDisk": {
+              "storageAccountType": "[variables('osDiskType')]"
+            },
+            "deleteOption": "[variables('osDiskDeleteOption')]"
+          },
+          "imageReference": {
+            "publisher": "microsoftsqlserver",
+            "offer": "sql2017-ws2019",
+            "sku": "sqldev-gen2",
+            "version": "latest"
+          },
+          "copy": [
+            {
+              "name": "dataDisks",
+              "count": "[length(variables('dataDisks'))]",
+              "input": {
+                "lun": "[variables('dataDisks')[copyIndex('dataDisks')].lun]",
+                "createOption": "[variables('dataDisks')[copyIndex('dataDisks')].createOption]",
+                "caching": "[variables('dataDisks')[copyIndex('dataDisks')].caching]",
+                "diskSizeGB": "[variables('dataDisks')[copyIndex('dataDisks')].diskSizeGB]",
+                "managedDisk": {
+                  "id": "[coalesce(variables('dataDisks')[copyIndex('dataDisks')].id, if(equals(variables('dataDisks')[copyIndex('dataDisks')].name, json('null')), json('null'), resourceId('Microsoft.Compute/disks', variables('dataDisks')[copyIndex('dataDisks')].name)))]",
+                  "storageAccountType": "[variables('dataDisks')[copyIndex('dataDisks')].storageAccountType]"
+                },
+                "deleteOption": "[variables('dataDisks')[copyIndex('dataDisks')].deleteOption]",
+                "writeAcceleratorEnabled": "[variables('dataDisks')[copyIndex('dataDisks')].writeAcceleratorEnabled]"
+              }
+            }
+          ]
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('networkInterfaceName'))]",
+              "properties": {
+                "deleteOption": "[variables('nicDeleteOption')]"
+              }
+            }
+          ]
+        },
+        "osProfile": {
+          "computerName": "[variables('virtualMachineComputerName')]",
+          "adminUsername": "[parameters('adminUsername')]",
+          "adminPassword": "[parameters('adminPassword')]",
+          "windowsConfiguration": {
+            "enableAutomaticUpdates": true,
+            "provisionVmAgent": true,
+            "patchSettings": {
+              "enableHotpatching": "[variables('enableHotpatching')]",
+              "patchMode": "[variables('patchMode')]"
+            }
+          }
+        },
+        "diagnosticsProfile": {
+          "bootDiagnostics": {
+            "enabled": true
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.SqlVirtualMachine/SqlVirtualMachines",
+      "apiVersion": "2021-11-01-preview",
+      "name": "[variables('sqlVirtualMachineName')]",
+      "location": "[variables('sqlVirtualMachineLocation')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Compute/virtualMachines', variables('sqlVirtualMachineName'))]"
+      ],
+      "properties": {
+        "virtualMachineResourceId": "[resourceId('Microsoft.Compute/virtualMachines', variables('sqlVirtualMachineName'))]",
+        "sqlManagement": "Full",
+        "SqlServerLicenseType": "PAYG",
+        "AutoPatchingSettings": {
+          "Enable": true,
+          "DayOfWeek": "[variables('sqlAutopatchingDayOfWeek')]",
+          "MaintenanceWindowStartingHour": "[variables('sqlAutopatchingStartHour')]",
+          "MaintenanceWindowDuration": "[variables('sqlAutopatchingWindowDuration')]"
+        },
+        "KeyVaultCredentialSettings": {
+          "Enable": false,
+          "CredentialName": ""
+        },
+        "StorageConfigurationSettings": {
+          "DiskConfigurationType": "[variables('sqlStorageDisksConfigurationType')]",
+          "StorageWorkloadType": "[variables('sqlStorageWorkloadType')]",
+          "SQLDataSettings": {
+            "LUNs": "[variables('dataDisksLUNs')]",
+            "DefaultFilePath": "[variables('dataPath')]"
+          },
+          "SQLLogSettings": {
+            "LUNs": "[variables('logDisksLUNs')]",
+            "DefaultFilePath": "[variables('logPath')]"
+          },
+          "SQLTempDbSettings": {
+            "DefaultFilePath": "[variables('tempDbPath')]",
+            "DataFileCount": "[variables('dataFileCount')]",
+            "DataFileSize": "[variables('dataFileSize')]",
+            "DataGrowth": "[variables('dataGrowth')]",
+            "LogFileSize": "[variables('logFileSize')]",
+            "LogGrowth": "[variables('logGrowth')]"
+          },
+          "SQLSystemDbOnDataDisk": "[variables('SQLSystemDbOnDataDisk')]"
+        },
+        "ServerConfigurationsManagementSettings": {
+          "SQLConnectivityUpdateSettings": {
+            "ConnectivityType": "[variables('sqlConnectivityType')]",
+            "Port": "[variables('sqlPortNumber')]",
+            "SQLAuthUpdateUserName": "[parameters('adminUsername')]",
+            "SQLAuthUpdatePassword": "[parameters('adminPassword')]"
+          },
+          "AdditionalFeaturesServerConfigurations": {
+            "IsRServicesEnabled": "[variables('rServicesEnabled')]"
+          },
+          "SQLInstanceSettings": {
+            "maxDop": "[variables('maxdop')]",
+            "isOptimizeForAdHocWorkloadsEnabled": "[variables('isOptimizeForAdHocWorkloadsEnabled')]",
+            "collation": "[variables('collation')]",
+            "minServerMemoryMB": "[variables('minServerMemoryMB')]",
+            "maxServerMemoryMB": "[variables('maxServerMemoryMB')]",
+            "isLPIMEnabled": "[variables('isLPIMEnabled')]",
+            "isIFIEnabled": "[variables('isIFIEnabled')]"
+          }
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "adminUsername": {
+      "type": "String",
+      "value": "[parameters('adminUsername')]"
+    },
+    "adminPw": {
+      "type": "SecureString",
+      "value": "[parameters('adminPassword')]"
+    },
+    "VMName": {
+      "type": "String",
+      "value": "[variables('virtualMachineName')]"
+    },
+    "ipAddress": {
+      "type": "String",
+      "value": "[reference(resourceId('Microsoft.Network/publicIPAddresses',variables('publicIpAddressName'))).ipAddress]"
+    }
+  }
+}

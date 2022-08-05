@@ -1,0 +1,20 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVerision": "1.0.0.0",
+  "parameters": {
+    "location": {
+       "value": "southcentralus"
+    },
+    "adminUsername": {
+       "value": "testadmin"
+    },
+    "adminPassword": {
+       "reference": {
+          "keyVault": {
+             "id": "/subscriptions/ff356d7e-a5f6-4293-af53-b3b85f1c54fa/resourcegroups/Innovation-ICD-Apps-RG/providers/Microsoft.KeyVault/vaults/sqlVMdeployment"
+          },
+          "secretName": "userPassword"
+        }
+    }
+  }
+}
