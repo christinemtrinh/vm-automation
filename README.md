@@ -5,6 +5,8 @@ It sets up a sandbox environment through a series of steps.
 
   1. Declare needed resources (i.e. resource group, storage account, helper script) and their location
   2. Assign identifying name for deployment
+  
+Missing from the files is an additional script which configured security settings on the VM, copied over back up files from blob storage, and runs a SQL query to attach the database to make a usable instance. 
 
 Achievements: 
   - Utilized Key Vault to shield password from code
