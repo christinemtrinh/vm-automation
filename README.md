@@ -12,3 +12,4 @@ Achievements:
   - Utilized Key Vault to shield password from code
   - Assigned resources of a deployment a common, randomized prefix to differentiate
   - Generated tokens for secure access to cloud resources
+  - Configured network to only allow connections from corporate VPN
