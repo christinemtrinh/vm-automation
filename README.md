@@ -10,4 +10,5 @@ Missing from the files is an additional script which configured security setting
 
 Achievements: 
   - Utilized Key Vault to shield password from code
-  - Assigned resources of a deployment a common, randomized prefix to differentiate different uses. 
+  - Assigned resources of a deployment a common, randomized prefix to differentiate
+  - Generated tokens for secure access to cloud resources
