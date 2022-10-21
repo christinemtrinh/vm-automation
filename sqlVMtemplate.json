@@ -22,7 +22,7 @@
     "networkSecurityGroupName": "[concat(variables('resourceNamePrefix'), 'nsg')]",
     "subnetName": "subnet-dbmigration",
     "comment0": "This existing subnet currently supports 251 simultaneous IPs (can be configured).",
-    "virtualNetworkId": "/subscriptions/ff356d7e-a5f6-4293-af53-b3b85f1c54fa/resourceGroups/Innovation-ICD-Apps-RG/providers/Microsoft.Network/virtualNetworks/vnet-dbmigration",
+    "virtualNetworkId": "<REDACTED>",
     "networkSecurityGroupRules": [
       {
         "name": "Deny_RDPs",
